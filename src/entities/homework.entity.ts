@@ -19,7 +19,7 @@ export class Homework {
     @Column()
     need_PDF: boolean;
 
-    @Column()
+    @Column({ default: 0 })
     submit_Number: number;
 
     @Column({ default: 37 })

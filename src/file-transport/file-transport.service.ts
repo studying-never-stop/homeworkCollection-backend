@@ -11,6 +11,7 @@ import path from 'path';
 import { Homework } from 'src/entities/homework.entity';
 import { User } from 'src/entities/user.entity';
 import { UserService } from 'src/user/user.service';
+import { CourseService } from 'src/course/course.service';
 
 @Injectable()
 export class FileTransportService {
@@ -18,6 +19,7 @@ export class FileTransportService {
     private dateService: DateService;
     private homeworkService: HomeworkService;
     private userService: UserService
+    private courseService: CourseService
     constructor(
         @InjectRepository(Record)
         private recordRepository: Repository<Record>,
@@ -108,5 +110,9 @@ export class FileTransportService {
                 }
                 return this.response
             })
+    }
+
+    public async homeworkTable() {
+
     }
 }

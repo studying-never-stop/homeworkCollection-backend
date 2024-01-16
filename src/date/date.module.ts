@@ -4,6 +4,7 @@ import { DateService } from './date.service';
 
 @Module({
   controllers: [DateController],
-  providers: [DateService]
+  providers: [DateService],
+  exports: [DateService]
 })
-export class DateModule {}
+export class DateModule { }

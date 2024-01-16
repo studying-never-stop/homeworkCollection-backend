@@ -1,4 +1,4 @@
-import { Body, Controller, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Param, Post, UseGuards } from '@nestjs/common';
 import { HomeworkService } from './homework.service';
 import { Homework } from 'src/entities/homework.entity';
 import { AuthGuard } from 'src/guard/auth.guard';
@@ -13,7 +13,7 @@ export class HomeworkController {
 
     @Post('addHomework')
     @Role('管理员')
-    public async addHomework(@Body() homework: Homework) {
+    public async addHomework(@Body() homework) {
         return await this.homeworkService.addHomework(homework)
     }
 

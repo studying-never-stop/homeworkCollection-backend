@@ -9,11 +9,23 @@ import { HomeworkController } from './homework/homework.controller';
 import { HomeworkModule } from './homework/homework.module';
 import { DateModule } from './date/date.module';
 import { FileTransportModule } from './file-transport/file-transport.module';
-import * as ormconfig from '../ormconfig';
+import { join } from 'path';
 
 @Module({
   imports: [
-    TypeOrmModule.forRoot(ormconfig),
+    TypeOrmModule.forRoot({
+      type: 'mysql',
+      host: 'localhost',
+      port: 3306,
+      username: 'root',
+      password: 'wsy021031',
+      database: 'homeworkCollectionSystem',
+      charset: 'utf8mb4',
+      synchronize: true, // 设置为 true 将在每次应用程序启动时自动创建数据库表（仅用于开发环境）
+      // logging: true, // 设置为 true 将启用 SQL 查询日志
+      // entities: ['src/entities/*.entity.ts'], // 根据你的项目结构配置实体类的路径
+      entities: [join(__dirname, '**', '*.entity.{ts,js}')]
+    }),
     UserModule,
     CourseModule,
     HomeworkModule,

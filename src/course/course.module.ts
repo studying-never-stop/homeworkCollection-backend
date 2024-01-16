@@ -8,6 +8,7 @@ import { HomeworkModule } from 'src/homework/homework.module';
 @Module({
   imports: [TypeOrmModule.forFeature([Course])],
   controllers: [CourseController],
-  providers: [CourseService]
+  providers: [CourseService],
+  exports: [CourseService]
 })
 export class CourseModule { }

@@ -6,19 +6,22 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { User } from 'src/entities/user.entity';
 import { Record } from 'src/entities/recordTransmission.entity';
 import * as fs from 'fs';
+import { CourseService } from 'src/course/course.service';
+import { Course } from 'src/entities/course.entity';
 
 
 @Injectable()
 export class HomeworkService {
     private response: IResponse;
     constructor(
+        private courseService: CourseService,// 注入 CourseService
         @InjectRepository(Homework)
         private homeworkRepository: Repository<Homework>,
     ) { }
 
-    public async addHomework(homework: Homework) {
+    public async addHomework(homework) {
         return await this.homeworkRepository
-            .find({ where: { homework_name: homework.homework_name } })
+            .findOne({ where: { homework_name: homework.homework_name } })
             .then(res => {
                 if (res != null) {
                     this.response = {
@@ -30,15 +33,19 @@ export class HomeworkService {
             })
             .then(async () => {
                 try {
-                    let courseName = homework.course
+                    const courseId: number = homework.course
+                    let course: Course = await this.courseService.findCourseById(courseId)
+                    let parentPath = course.address
                     let packageName = homework.homework_name
-                    const folderPath = 'D:/大三/' + `${courseName}/${packageName}`
+                    const folderPath = `${parentPath}/${packageName}`
                     // 检查文件夹是否已经存在
                     if (!fs.existsSync(folderPath)) {
                         // 如果不存在，创建文件夹
                         fs.mkdirSync(folderPath);
                     }
+                    homework.course = course
                     homework.address = folderPath
+                    homework.DDL = new Date(homework.DDL)
                     await this.homeworkRepository.save(homework)
                     this.response = {
                         code: 0,
@@ -63,19 +70,25 @@ export class HomeworkService {
         return await this.homeworkRepository
             .createQueryBuilder("Homework")
             .where("Homework.id = :id", { id: homework.id })
-            .update(Homework)
-            .set(homework)
-            .execute()
-            .then(() => {
-                return this.response = {
-                    code: 0,
-                    msg: "作业信息修改成功",
-                }
+            .getOne()
+            .then(async (res: Homework) => {
+                return await this.homeworkRepository
+                    .createQueryBuilder("Homework")
+                    .where("Homework.id = :id", { id: homework.id })
+                    .update(Homework)
+                    .set(homework)
+                    .execute()
+                    .then(() => {
+                        return this.response = {
+                            code: 0,
+                            msg: "作业信息修改成功",
+                        }
+                    })
             })
     }
 
     public async delHomework(id: number) {
-        return await this.homeworkRepository.createQueryBuilder('Course')
+        return await this.homeworkRepository.createQueryBuilder('Homework')
             .delete()
             .from(Homework)
             .where("id = :id", { id: id })
@@ -92,18 +105,27 @@ export class HomeworkService {
         const query: string = msg.query
         const pagenum: number = msg.pagenum
         const pagesize: number = msg.pagesize
+        let allOfHomework: Homework[]
         let thelist = []
         let total
 
-        let allOfCourse = await this.homeworkRepository
-            .createQueryBuilder("Course")
-            .getMany();
+        if (query == "") {
+            allOfHomework = await this.homeworkRepository
+                .createQueryBuilder("Homework")
+                .getMany();
+        } else {
+            allOfHomework = await this.homeworkRepository
+                .createQueryBuilder("Homework")
+                .where("courseId = :courseId", { courseId: query })
+                .orWhere("homework_name = :homework_name", { homework_name: query })
+                .getMany();
 
-        total = allOfCourse.length
+        }
+        total = allOfHomework.length
         let startNumber: number = (pagenum - 1) * pagesize
         let endNumber: number = pagenum * pagesize < total ? pagenum * pagesize : total
         for (let i = startNumber; i < endNumber; i++) {
-            thelist.push(allOfCourse[i])
+            thelist.push(allOfHomework[i])
         }
         return this.response = {
             code: 0,

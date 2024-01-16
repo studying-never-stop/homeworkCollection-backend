@@ -17,7 +17,7 @@ export class CourseService {
     ) { }
 
     public async addCourse(course: Course) {
-        return await this.courseRepository.find({ where: { coursename: course.coursename } })
+        return await this.courseRepository.findOne({ where: { coursename: course.coursename } })
             .then(res => {
                 if (res != null) {
                     this.response = {
@@ -29,10 +29,11 @@ export class CourseService {
             })
             .then(async () => {
                 try {
-                    await this.courseRepository.save(course)
                     let packageName = course.coursename
+                    //真正使用时加上第一个斜杠
+                    // const parentPath = 'D:' + `/${course.grade}`
                     const parentPath = 'D:' + `${course.grade}`
-                    const folderPath = parentPath + `${packageName}`
+                    const folderPath = parentPath + `/${packageName}`
                     if (!fs.existsSync(parentPath)) {
                         fs.mkdirSync(parentPath);
                     }
@@ -41,6 +42,8 @@ export class CourseService {
                         // 如果不存在，创建文件夹
                         fs.mkdirSync(folderPath);
                     }
+                    course.address = folderPath;
+                    await this.courseRepository.save(course)
                     this.response = {
                         code: 0,
                         msg: "创建成功"
@@ -64,14 +67,20 @@ export class CourseService {
         return await this.courseRepository
             .createQueryBuilder("Course")
             .where("Course.id = :id", { id: course.id })
-            .update(Course)
-            .set(course)
-            .execute()
-            .then(() => {
-                return this.response = {
-                    code: 0,
-                    msg: "课程信息修改成功",
-                }
+            .getOne()
+            .then(async (res: Course) => {
+                return await this.courseRepository
+                    .createQueryBuilder("Course")
+                    .where("Course.id = :id", { id: course.id })
+                    .update(Course)
+                    .set(course)
+                    .execute()
+                    .then(() => {
+                        return this.response = {
+                            code: 0,
+                            msg: "课程信息修改成功",
+                        }
+                    })
             })
     }
 
@@ -95,27 +104,26 @@ export class CourseService {
         const pagesize: number = msg.pagesize
         let thelist = []
         let total
+        let allOfCourse: Course[]
 
         if (query == '') {
-            let allOfCourse = await this.courseRepository
+            allOfCourse = await this.courseRepository
                 .createQueryBuilder("Course")
                 .getMany();
 
-            total = allOfCourse.length
-            let startNumber: number = (pagenum - 1) * pagesize
-            let endNumber: number = pagenum * pagesize < total ? pagenum * pagesize : total
-            for (let i = startNumber; i < endNumber; i++) {
-                thelist.push(allOfCourse[i])
-            }
+
         }
         else {
-            let findUser = await this.courseRepository.createQueryBuilder("User")
+            allOfCourse = await this.courseRepository.createQueryBuilder("User")
                 .where("User.realname = :realname", { coursename: query })
                 .orWhere("User.student_number = :student_number", { teacher: query })
-                .getOne();
-
-            thelist.push(findUser)
-            total = 1;
+                .getMany();
+        }
+        total = allOfCourse.length
+        let startNumber: number = (pagenum - 1) * pagesize
+        let endNumber: number = pagenum * pagesize < total ? pagenum * pagesize : total
+        for (let i = startNumber; i < endNumber; i++) {
+            thelist.push(allOfCourse[i])
         }
         return this.response = {
             code: 0,
@@ -139,6 +147,10 @@ export class CourseService {
             }
         }
 
+    }
+
+    public async findCourseById(id: number) {
+        return await this.courseRepository.findOne({ where: { id: id } })
     }
 
 }

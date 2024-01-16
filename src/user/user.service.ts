@@ -21,28 +21,27 @@ export class UserService {
         const pagesize: number = msg.pagesize
         let thelist = []
         let total
+        let allOfUser: User[]
 
         if (query == '') {
-            let allOfUser = await this.userRepository
+            allOfUser = await this.userRepository
                 .createQueryBuilder("User")
                 .getMany();
 
-            total = allOfUser.length
-            let startNumber: number = (pagenum - 1) * pagesize
-            let endNumber: number = pagenum * pagesize < total ? pagenum * pagesize : total
-            for (let i = startNumber; i < endNumber; i++) {
-                thelist.push(allOfUser[i])
-            }
+
         }
         else {
-            let findUser = await this.userRepository.createQueryBuilder("User")
+            allOfUser = await this.userRepository.createQueryBuilder("User")
                 .where("User.realname = :realname", { realname: query })
                 .orWhere("User.student_number = :student_number", { student_number: query })
-                //如果有同名同姓的学生需要向上面一样修改为多条查找
-                .getOne();
+                .getMany();
 
-            thelist.push(findUser)
-            total = 1;
+        }
+        total = allOfUser.length
+        let startNumber: number = (pagenum - 1) * pagesize
+        let endNumber: number = pagenum * pagesize < total ? pagenum * pagesize : total
+        for (let i = startNumber; i < endNumber; i++) {
+            thelist.push(allOfUser[i])
         }
         return this.response = {
             code: 0,
@@ -99,13 +98,14 @@ export class UserService {
             })
     }
 
-    public async login(user): Promise<User[]> {
+    public async login(user) {
         return await this.validate(user)
             .then(async (res: IResponse) => {
                 if (res.code != 0 && res.code != 1) {
                     this.response = res;
                     throw this.response;
                 }
+                console.log(res.code)
                 const username = res.msg.username
                 const student_number = res.msg.student_number
                 const role = res.msg.userRole
@@ -120,27 +120,30 @@ export class UserService {
                             role
                         }
                     }
-                }
-                this.response = {
-                    code: 0,
-                    msg: {
-                        needchange: false,
-                        token: await this.createToken(user),
-                        username,
-                        student_number,
-                        role
+                } else {
+                    this.response = {
+                        code: 0,
+                        msg: {
+                            needchange: false,
+                            token: await this.createToken(user),
+                            username,
+                            student_number,
+                            role
+                        }
                     }
                 }
                 return this.response
             })
             .catch(err => {
+                console.log(err)
                 return err
             })
     }
 
     public async adduser(user: User) {
-        return this.userRepository.findBy({ student_number: user.student_number })
+        return this.userRepository.findOne({ where: { student_number: user.student_number } })
             .then(res => {
+                console.log(res)
                 if (res != null) {
                     this.response = {
                         code: 1,
@@ -175,14 +178,19 @@ export class UserService {
         return await this.userRepository
             .createQueryBuilder("User")
             .where("User.id = :id", { id: user.id })
-            .update(User)
-            .set(user)
-            .execute()
-            .then(() => {
-                return this.response = {
-                    code: 0,
-                    msg: "用户修改成功",
-                }
+            .getOne()
+            .then(async (res: User) => {
+                return await this.userRepository.createQueryBuilder('User')
+                    .update(User)
+                    .set(user)
+                    .where("id = :id", { id: user.id })
+                    .execute()
+                    .then(() => {
+                        return this.response = {
+                            code: 0,
+                            msg: "用户修改成功",
+                        }
+                    })
             })
     }
 
@@ -200,7 +208,7 @@ export class UserService {
             })
     }
 
-    private async createToken(user: User) {
+    private async createToken(user) {
         return await this.jwtService.sign(user)
     }
 
